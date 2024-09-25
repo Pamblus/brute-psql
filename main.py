@@ -2,6 +2,7 @@ import subprocess
 import sys
 import os
 import pexpect
+import psycopg2
 
 def manual_input_psql():
     host = input("Введите доменное имя или IP-адрес: ")
@@ -12,10 +13,121 @@ def manual_input_psql():
     database = input("Введите имя базы данных: ")
     password = input("Введите пароль: ")
     
-    command = f"psql -h {host} -p {port} -U {username} -d {database}"
-    os.environ['PGPASSWORD'] = password
-    print(f"Выполняется команда: {command}")
-    subprocess.run(command, shell=True)
+    try:
+        conn = psycopg2.connect(
+            host=host,
+            port=port,
+            user=username,
+            password=password,
+            database=database
+        )
+        print("Успешное подключение к базе данных PostgreSQL")
+        psql_menu(conn)
+    except Exception as e:
+        print(f"Ошибка при подключении к базе данных: {e}")
+
+def psql_menu(conn):
+    while True:
+        print("\nВыберите действие:")
+        print("1. Показать таблицы")
+        print("2. Выбрать данные из таблицы")
+        print("3. Добавить данные в таблицу")
+        print("4. Удалить данные из таблицы")
+        print("5. Скачать данные в текстовый файл")
+        print("6. Выход")
+        choice = input("Введите номер действия: ")
+        
+        if choice == "1":
+            show_tables(conn)
+        elif choice == "2":
+            select_data(conn)
+        elif choice == "3":
+            insert_data(conn)
+        elif choice == "4":
+            delete_data(conn)
+        elif choice == "5":
+            download_data(conn)
+        elif choice == "6":
+            print("Выход из меню PostgreSQL")
+            break
+        else:
+            print("Неверный выбор. Пожалуйста, выберите действие от 1 до 6.")
+
+def show_tables(conn):
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public'
+    """)
+    tables = cursor.fetchall()
+    print("\nТаблицы в базе данных:")
+    for table in tables:
+        print(table[0])
+    cursor.close()
+
+def select_data(conn):
+    table_name = input("Введите имя таблицы: ")
+    limit = input("Введите лимит строк (оставьте пустым для вывода всех строк): ")
+    if not limit:
+        limit = "ALL"
+    else:
+        limit = int(limit)
+    
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT * FROM {table_name} LIMIT {limit}")
+    rows = cursor.fetchall()
+    colnames = [desc[0] for desc in cursor.description]
+    
+    print(f"\nДанные из таблицы {table_name}:")
+    print(colnames)
+    for row in rows:
+        print(row)
+    cursor.close()
+
+def insert_data(conn):
+    table_name = input("Введите имя таблицы: ")
+    columns = input("Введите имена столбцов через запятую: ")
+    values = input("Введите значения через запятую: ")
+    
+    cursor = conn.cursor()
+    cursor.execute(f"INSERT INTO {table_name} ({columns}) VALUES ({values})")
+    conn.commit()
+    print("Данные успешно добавлены")
+    cursor.close()
+
+def delete_data(conn):
+    table_name = input("Введите имя таблицы: ")
+    condition = input("Введите условие для удаления (например, id=1): ")
+    
+    cursor = conn.cursor()
+    cursor.execute(f"DELETE FROM {table_name} WHERE {condition}")
+    conn.commit()
+    print("Данные успешно удалены")
+    cursor.close()
+
+def download_data(conn):
+    table_name = input("Введите имя таблицы: ")
+    file_format = input("Введите формат файла (txt или csv): ")
+    file_name = f"{table_name}.{file_format}"
+    
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT * FROM {table_name}")
+    rows = cursor.fetchall()
+    colnames = [desc[0] for desc in cursor.description]
+    
+    with open(file_name, 'w') as f:
+        if file_format == "csv":
+            f.write(",".join(colnames) + "\n")
+            for row in rows:
+                f.write(",".join(map(str, row)) + "\n")
+        else:
+            f.write("\t".join(colnames) + "\n")
+            for row in rows:
+                f.write("\t".join(map(str, row)) + "\n")
+    
+    print(f"Данные успешно сохранены в файл {file_name}")
+    cursor.close()
 
 def bruteforce_psql():
     host = input("Введите доменное имя или IP-адрес: ")
@@ -30,23 +142,21 @@ def bruteforce_psql():
     
     for password in passwords:
         password = password.strip()
-        command = f"psql -h {host} -p {port} -U {username} -d {database}"
-        os.environ['PGPASSWORD'] = password
         print(f"Пробуем пароль: {password}")
         
         try:
-            result = subprocess.run(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            if result.returncode == 0:
-                print(f"Успешный вход! Пароль: {password}")
-                return  # Останавливаем брутфорс, если пароль верный
-            elif "password authentication failed" in result.stderr:
-                print("Неверный пароль, пробуем следующий...")
-            else:
-                print(f"Ошибка: {result.stderr}")
-                break
+            conn = psycopg2.connect(
+                host=host,
+                port=port,
+                user=username,
+                password=password,
+                database=database
+            )
+            print(f"Успешный вход! Пароль: {password}")
+            psql_menu(conn)
+            return  # Останавливаем брутфорс, если пароль верный
         except Exception as e:
-            print(f"Ошибка при выполнении команды: {e}")
-            break
+            print(f"Неверный пароль или другая ошибка: {e}")
 
 def manual_input_ssh():
     host = input("Введите доменное имя или IP-адрес: ")
@@ -141,8 +251,9 @@ def main_menu():
 if __name__ == "__main__":
     try:
         import pexpect
+        import psycopg2
     except ImportError:
-        print("Ошибка: модуль pexpect не установлен. Пожалуйста, установите его с помощью 'pip install pexpect'.")
+        print("Ошибка: модули pexpect или psycopg2 не установлены. Пожалуйста, установите их с помощью 'pip install pexpect psycopg2'.")
         sys.exit(1)
     
     main_menu()
