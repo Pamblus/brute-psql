@@ -273,6 +273,25 @@ def generate_random_string(length=5):
     """
     return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
 
+def progress_bar(iteration, total, prefix='', suffix='', decimals=1, length=50, fill='█', print_end="\r"):
+    """
+    Выводит прогресс-бар в терминал.
+    :param iteration: Текущая итерация.
+    :param total: Общее количество итераций.
+    :param prefix: Префикс строки.
+    :param suffix: Суффикс строки.
+    :param decimals: Количество знаков после запятой.
+    :param length: Длина прогресс-бара.
+    :param fill: Символ заполнения прогресс-бара.
+    :param print_end: Символ окончания строки.
+    """
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filled_length = int(length * iteration // total)
+    bar = fill * filled_length + '-' * (length - filled_length)
+    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end=print_end)
+    if iteration == total:
+        print()
+
 def main():
     clear_screen()
     print_banner()
@@ -284,66 +303,54 @@ def main():
     if target.startswith(('http://', 'https://')):
         target = target.split('//')[1]
     
-    show_progress("Сканируем хост")
+    total_steps = 15
+    current_step = 0
+    
+    progress_bar(current_step, total_steps, prefix='Прогресс:', suffix='Сканирование хоста', length=50)
     host_info = get_host_info(target)
-    print(host_info)
-    
-    show_progress("Сканируем открытые порты")
+    current_step += 1
+    progress_bar(current_step, total_steps, prefix='Прогресс:', suffix='Сканирование открытых портов', length=50)
     open_ports = scan_ports(target)
-    print(f"Открытые порты: {open_ports}")
-    
-    show_progress("Сканируем файлы и папки")
+    current_step += 1
+    progress_bar(current_step, total_steps, prefix='Прогресс:', suffix='Сканирование файлов и папок', length=50)
     found_items = dirb_scan(target)
-    print(f"Найденные файлы и папки: {found_items}")
-    
-    show_progress("Ищем ссылки и ключевые слова")
+    current_step += 1
+    progress_bar(current_step, total_steps, prefix='Прогресс:', suffix='Поиск ссылок и ключевых слов', length=50)
     links, keywords = find_links_and_keywords(f"http://{target}")
-    print(f"Найденные ссылки: {links}")
-    print(f"Найденные ключевые слова: {keywords}")
-    
-    show_progress("Ищем POST и GET запросы")
+    current_step += 1
+    progress_bar(current_step, total_steps, prefix='Прогресс:', suffix='Поиск POST и GET запросов', length=50)
     requests_found = find_requests(f"http://{target}")
-    print(f"Найденные запросы: {requests_found}")
-    
-    show_progress("Сканируем на наличие заголовков безопасности")
+    current_step += 1
+    progress_bar(current_step, total_steps, prefix='Прогресс:', suffix='Сканирование заголовков безопасности', length=50)
     security_headers = scan_security_headers(f"http://{target}")
-    print(f"Найденные заголовки безопасности: {security_headers}")
-    
-    show_progress("Сканируем на наличие открытых директорий")
+    current_step += 1
+    progress_bar(current_step, total_steps, prefix='Прогресс:', suffix='Сканирование открытых директорий', length=50)
     directory_listing = scan_directory_listing(f"http://{target}")
-    print(f"Найденные открытые директории: {directory_listing}")
-    
-    show_progress("Сканируем на наличие уязвимостей в SSL/TLS")
+    current_step += 1
+    progress_bar(current_step, total_steps, prefix='Прогресс:', suffix='Сканирование уязвимостей в SSL/TLS', length=50)
     ssl_tls_vulnerabilities = scan_ssl_tls(target)
-    print(ssl_tls_vulnerabilities)
-    
-    show_progress("Сканируем на наличие уязвимостей в CMS")
+    current_step += 1
+    progress_bar(current_step, total_steps, prefix='Прогресс:', suffix='Сканирование уязвимостей в CMS', length=50)
     cms_vulnerabilities = scan_cms_vulnerabilities(target)
-    print(cms_vulnerabilities)
-    
-    show_progress("Сканируем на наличие уязвимостей в веб-сервере")
+    current_step += 1
+    progress_bar(current_step, total_steps, prefix='Прогресс:', suffix='Сканирование уязвимостей в веб-сервере', length=50)
     web_server_vulnerabilities = scan_web_server_vulnerabilities(target)
-    print(web_server_vulnerabilities)
-    
-    show_progress("Сканируем файл robots.txt")
+    current_step += 1
+    progress_bar(current_step, total_steps, prefix='Прогресс:', suffix='Сканирование файла robots.txt', length=50)
     robots_txt = scan_robots_txt(target)
-    print(f"Содержимое robots.txt: {robots_txt}")
-    
-    show_progress("Сканируем файл sitemap.xml")
+    current_step += 1
+    progress_bar(current_step, total_steps, prefix='Прогресс:', suffix='Сканирование файла sitemap.xml', length=50)
     sitemap_xml = scan_sitemap_xml(target)
-    print(f"Содержимое sitemap.xml: {sitemap_xml}")
-    
-    show_progress("Сканируем на наличие панели администратора")
+    current_step += 1
+    progress_bar(current_step, total_steps, prefix='Прогресс:', suffix='Сканирование панели администратора', length=50)
     admin_panel = scan_admin_panel(target)
-    print(f"Панель администратора: {admin_panel}")
-    
-    show_progress("Сканируем на наличие страниц ошибок")
+    current_step += 1
+    progress_bar(current_step, total_steps, prefix='Прогресс:', suffix='Сканирование страниц ошибок', length=50)
     error_pages = scan_error_pages(target)
-    print(f"Найденные страницы ошибок: {error_pages}")
-    
-    show_progress("Сканируем поддерживаемые HTTP методы")
+    current_step += 1
+    progress_bar(current_step, total_steps, prefix='Прогресс:', suffix='Сканирование поддерживаемых HTTP методов', length=50)
     http_methods = scan_http_methods(target)
-    print(f"Поддерживаемые HTTP методы: {http_methods}")
+    current_step += 1
     
     # Собираем все данные в таблицу
     data = {
@@ -368,7 +375,7 @@ def main():
     # Выводим данные в таблицу
     print("\nРезультаты сканирования:")
     for key, value in data.items():
-        print(f"{key}: {value}")
+        print(f"{key}:\n{value}\n")
     
     # Предлагаем сохранить результаты
     save_option = input("Сохранить результаты в файл? (y/n): ")
