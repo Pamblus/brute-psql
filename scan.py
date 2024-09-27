@@ -6,6 +6,8 @@ import re
 import csv
 import time
 import sys
+import random
+import string
 
 def clear_screen():
     """
@@ -183,6 +185,74 @@ def scan_web_server_vulnerabilities(target):
     result = subprocess.run(nikto_command, shell=True, capture_output=True, text=True)
     return result.stdout
 
+def scan_robots_txt(target):
+    """
+    Сканирует файл robots.txt на целевом сайте.
+    :param target: IP-адрес или домен цели.
+    :return: Содержимое файла robots.txt.
+    """
+    robots_url = f"http://{target}/robots.txt"
+    response = requests.get(robots_url)
+    if response.status_code == 200:
+        return response.text
+    else:
+        return "Файл robots.txt не найден."
+
+def scan_sitemap_xml(target):
+    """
+    Сканирует файл sitemap.xml на целевом сайте.
+    :param target: IP-адрес или домен цели.
+    :return: Содержимое файла sitemap.xml.
+    """
+    sitemap_url = f"http://{target}/sitemap.xml"
+    response = requests.get(sitemap_url)
+    if response.status_code == 200:
+        return response.text
+    else:
+        return "Файл sitemap.xml не найден."
+
+def scan_admin_panel(target):
+    """
+    Сканирует на наличие панели администратора на целевом сайте.
+    :param target: IP-адрес или домен цели.
+    :return: URL панели администратора, если найдена.
+    """
+    admin_paths = ['/admin', '/login', '/wp-admin', '/administrator']
+    for path in admin_paths:
+        admin_url = f"http://{target}{path}"
+        response = requests.get(admin_url)
+        if response.status_code == 200:
+            return admin_url
+    return "Панель администратора не найдена."
+
+def scan_error_pages(target):
+    """
+    Сканирует на наличие страниц ошибок на целевом сайте.
+    :param target: IP-адрес или домен цели.
+    :return: Список найденных страниц ошибок.
+    """
+    error_pages = []
+    for code in [400, 401, 403, 404, 500]:
+        error_url = f"http://{target}/{code}.html"
+        response = requests.get(error_url)
+        if response.status_code == 200:
+            error_pages.append(error_url)
+    return error_pages
+
+def scan_http_methods(target):
+    """
+    Сканирует поддерживаемые HTTP методы на целевом сайте.
+    :param target: IP-адрес или домен цели.
+    :return: Список поддерживаемых HTTP методов.
+    """
+    methods = ['GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS']
+    supported_methods = []
+    for method in methods:
+        response = requests.request(method, f"http://{target}")
+        if response.status_code != 405:
+            supported_methods.append(method)
+    return supported_methods
+
 def show_progress(message, duration=2):
     """
     Показывает прогресс выполнения задачи.
@@ -194,6 +264,14 @@ def show_progress(message, duration=2):
         time.sleep(1)
         print('.', end='', flush=True)
     print()
+
+def generate_random_string(length=5):
+    """
+    Генерирует случайную строку из букв и цифр.
+    :param length: Длина строки.
+    :return: Случайная строка.
+    """
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
 
 def main():
     clear_screen()
@@ -247,6 +325,26 @@ def main():
     web_server_vulnerabilities = scan_web_server_vulnerabilities(target)
     print(web_server_vulnerabilities)
     
+    show_progress("Сканируем файл robots.txt")
+    robots_txt = scan_robots_txt(target)
+    print(f"Содержимое robots.txt: {robots_txt}")
+    
+    show_progress("Сканируем файл sitemap.xml")
+    sitemap_xml = scan_sitemap_xml(target)
+    print(f"Содержимое sitemap.xml: {sitemap_xml}")
+    
+    show_progress("Сканируем на наличие панели администратора")
+    admin_panel = scan_admin_panel(target)
+    print(f"Панель администратора: {admin_panel}")
+    
+    show_progress("Сканируем на наличие страниц ошибок")
+    error_pages = scan_error_pages(target)
+    print(f"Найденные страницы ошибок: {error_pages}")
+    
+    show_progress("Сканируем поддерживаемые HTTP методы")
+    http_methods = scan_http_methods(target)
+    print(f"Поддерживаемые HTTP методы: {http_methods}")
+    
     # Собираем все данные в таблицу
     data = {
         "Host Info": host_info,
@@ -259,7 +357,12 @@ def main():
         "Directory Listing": directory_listing,
         "SSL/TLS Vulnerabilities": ssl_tls_vulnerabilities,
         "CMS Vulnerabilities": cms_vulnerabilities,
-        "Web Server Vulnerabilities": web_server_vulnerabilities
+        "Web Server Vulnerabilities": web_server_vulnerabilities,
+        "Robots.txt": robots_txt,
+        "Sitemap.xml": sitemap_xml,
+        "Admin Panel": admin_panel,
+        "Error Pages": error_pages,
+        "HTTP Methods": http_methods
     }
     
     # Выводим данные в таблицу
@@ -271,18 +374,22 @@ def main():
     save_option = input("Сохранить результаты в файл? (y/n): ")
     if save_option.lower() == 'y':
         file_format = input("Выберите формат файла (txt/csv): ")
+        random_suffix = generate_random_string()
         if file_format.lower() == 'txt':
-            with open("pamblus_results.txt", "w") as f:
+            filename = f"pamblus_results_{random_suffix}.txt"
+            with open(filename, "w") as f:
+                f.write(f"Сканирование сайта: {target}\n\n")
                 for key, value in data.items():
-                    f.write(f"{key}: {value}\n")
-            print("Результаты сохранены в pamblus_results.txt")
+                    f.write(f"{key}:\n{value}\n\n")
+            print(f"Результаты сохранены в {filename}")
         elif file_format.lower() == 'csv':
-            with open("pamblus_results.csv", "w", newline='') as f:
+            filename = f"pamblus_results_{random_suffix}.csv"
+            with open(filename, "w", newline='') as f:
                 writer = csv.writer(f)
                 writer.writerow(["Category", "Data"])
                 for key, value in data.items():
                     writer.writerow([key, value])
-            print("Результаты сохранены в pamblus_results.csv")
+            print(f"Результаты сохранены в {filename}")
         else:
             print("Неизвестный формат файла. Результаты не сохранены.")
 
