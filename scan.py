@@ -4,6 +4,38 @@ import requests
 from bs4 import BeautifulSoup
 import re
 import csv
+import time
+import sys
+
+def clear_screen():
+    """
+    Очищает экран терминала.
+    """
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+def print_banner():
+    """
+    Выводит красивое название PAMBLUS.
+    """
+    banner = """
+██████████████████████████████████████████████
+█▄─▄▄─██▀▄─██▄─▀█▀─▄█▄─▄─▀█▄─▄███▄─██─▄█─▄▄▄▄█
+██─▄▄▄██─▀─███─█▄█─███─▄─▀██─██▀██─██─██▄▄▄▄─█
+▀▄▄▄▀▀▀▄▄▀▄▄▀▄▄▄▀▄▄▄▀▄▄▄▄▀▀▄▄▄▄▄▀▀▄▄▄▄▀▀▄▄▄▄▄▀
+"""
+    print(banner)
+
+def install_dependencies():
+    """
+    Устанавливает необходимые библиотеки, если они отсутствуют.
+    """
+    required_packages = ['requests', 'beautifulsoup4']
+    for package in required_packages:
+        try:
+            __import__(package)
+        except ImportError:
+            print(f"Устанавливаем {package}...")
+            subprocess.check_call([sys.executable, "-m", "pip", "install", package])
 
 def get_host_info(target):
     """
@@ -151,52 +183,67 @@ def scan_web_server_vulnerabilities(target):
     result = subprocess.run(nikto_command, shell=True, capture_output=True, text=True)
     return result.stdout
 
+def show_progress(message, duration=2):
+    """
+    Показывает прогресс выполнения задачи.
+    :param message: Сообщение для отображения.
+    :param duration: Продолжительность отображения.
+    """
+    print(message, end='', flush=True)
+    for _ in range(duration):
+        time.sleep(1)
+        print('.', end='', flush=True)
+    print()
+
 def main():
-    print("Добро пожаловать в PAMBLUS!")
+    clear_screen()
+    print_banner()
+    install_dependencies()
+    
     target = input("Введите IP-адрес или домен цели (например, google.com): ")
     
     # Убираем http:// или https://, если они есть
     if target.startswith(('http://', 'https://')):
         target = target.split('//')[1]
     
-    print(f"Сканируем {target}...")
+    show_progress("Сканируем хост")
     host_info = get_host_info(target)
     print(host_info)
     
-    print("Сканируем открытые порты...")
+    show_progress("Сканируем открытые порты")
     open_ports = scan_ports(target)
     print(f"Открытые порты: {open_ports}")
     
-    print("Сканируем файлы и папки...")
+    show_progress("Сканируем файлы и папки")
     found_items = dirb_scan(target)
     print(f"Найденные файлы и папки: {found_items}")
     
-    print("Ищем ссылки и ключевые слова...")
+    show_progress("Ищем ссылки и ключевые слова")
     links, keywords = find_links_and_keywords(f"http://{target}")
     print(f"Найденные ссылки: {links}")
     print(f"Найденные ключевые слова: {keywords}")
     
-    print("Ищем POST и GET запросы...")
+    show_progress("Ищем POST и GET запросы")
     requests_found = find_requests(f"http://{target}")
     print(f"Найденные запросы: {requests_found}")
     
-    print("Сканируем на наличие заголовков безопасности...")
+    show_progress("Сканируем на наличие заголовков безопасности")
     security_headers = scan_security_headers(f"http://{target}")
     print(f"Найденные заголовки безопасности: {security_headers}")
     
-    print("Сканируем на наличие открытых директорий...")
+    show_progress("Сканируем на наличие открытых директорий")
     directory_listing = scan_directory_listing(f"http://{target}")
     print(f"Найденные открытые директории: {directory_listing}")
     
-    print("Сканируем на наличие уязвимостей в SSL/TLS...")
+    show_progress("Сканируем на наличие уязвимостей в SSL/TLS")
     ssl_tls_vulnerabilities = scan_ssl_tls(target)
     print(ssl_tls_vulnerabilities)
     
-    print("Сканируем на наличие уязвимостей в CMS...")
+    show_progress("Сканируем на наличие уязвимостей в CMS")
     cms_vulnerabilities = scan_cms_vulnerabilities(target)
     print(cms_vulnerabilities)
     
-    print("Сканируем на наличие уязвимостей в веб-сервере...")
+    show_progress("Сканируем на наличие уязвимостей в веб-сервере")
     web_server_vulnerabilities = scan_web_server_vulnerabilities(target)
     print(web_server_vulnerabilities)
     
