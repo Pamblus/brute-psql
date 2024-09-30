@@ -45,9 +45,12 @@ def get_host_info(target):
     :param target: IP-адрес или домен цели.
     :return: Словарь с информацией о хосте.
     """
-    nmap_command = f"nmap -sV -O {target}"
-    result = subprocess.run(nmap_command, shell=True, capture_output=True, text=True)
-    return result.stdout
+    try:
+        nmap_command = f"nmap -sV -O {target}"
+        result = subprocess.run(nmap_command, shell=True, capture_output=True, text=True)
+        return result.stdout
+    except Exception as e:
+        return f"Ошибка при сканировании хоста: {e}"
 
 def scan_ports(target):
     """
@@ -55,14 +58,17 @@ def scan_ports(target):
     :param target: IP-адрес или домен цели.
     :return: Список открытых портов.
     """
-    nmap_command = f"nmap -p- {target}"
-    result = subprocess.run(nmap_command, shell=True, capture_output=True, text=True)
-    open_ports = []
-    for line in result.stdout.splitlines():
-        if '/tcp' in line or '/udp' in line:
-            port = line.split('/')[0]
-            open_ports.append(port)
-    return open_ports
+    try:
+        nmap_command = f"nmap -p- {target}"
+        result = subprocess.run(nmap_command, shell=True, capture_output=True, text=True)
+        open_ports = []
+        for line in result.stdout.splitlines():
+            if '/tcp' in line or '/udp' in line:
+                port = line.split('/')[0]
+                open_ports.append(port)
+        return open_ports
+    except Exception as e:
+        return f"Ошибка при сканировании портов: {e}"
 
 def dirb_scan(target):
     """
@@ -70,13 +76,16 @@ def dirb_scan(target):
     :param target: IP-адрес или домен цели.
     :return: Список найденных файлов и папок.
     """
-    dirb_command = f"dirb http://{target} /usr/share/dirb/wordlists/common.txt"
-    result = subprocess.run(dirb_command, shell=True, capture_output=True, text=True)
-    found_items = []
-    for line in result.stdout.splitlines():
-        if '+ ' in line:
-            found_items.append(line.split(' ')[-1])
-    return found_items
+    try:
+        dirb_command = f"dirb http://{target} /usr/share/dirb/wordlists/common.txt"
+        result = subprocess.run(dirb_command, shell=True, capture_output=True, text=True)
+        found_items = []
+        for line in result.stdout.splitlines():
+            if '+ ' in line:
+                found_items.append(line.split(' ')[-1])
+        return found_items
+    except Exception as e:
+        return f"Ошибка при сканировании файлов и папок: {e}"
 
 def find_links_and_keywords(url):
     """
@@ -84,25 +93,28 @@ def find_links_and_keywords(url):
     :param url: URL цели.
     :return: Список найденных ссылок и ключевых слов.
     """
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    
-    links = []
-    keywords = []
-    
-    # Ищем ссылки
-    for link in soup.find_all('a'):
-        href = link.get('href')
-        if href and href.startswith(('http://', 'https://')):
-            links.append(href)
-    
-    # Ищем ключевые слова
-    text = soup.get_text()
-    for word in ['admin', 'administrator', 'user', 'database', 'login', 'password']:
-        if word in text:
-            keywords.append(word)
-    
-    return links, keywords
+    try:
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        links = []
+        keywords = []
+        
+        # Ищем ссылки
+        for link in soup.find_all('a'):
+            href = link.get('href')
+            if href and href.startswith(('http://', 'https://')):
+                links.append(href)
+        
+        # Ищем ключевые слова
+        text = soup.get_text()
+        for word in ['admin', 'administrator', 'user', 'database', 'login', 'password']:
+            if word in text:
+                keywords.append(word)
+        
+        return links, keywords
+    except Exception as e:
+        return f"Ошибка при поиске ссылок и ключевых слов: {e}"
 
 def find_requests(url):
     """
@@ -110,24 +122,27 @@ def find_requests(url):
     :param url: URL цели.
     :return: Список найденных запросов.
     """
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    
-    requests_found = []
-    
-    # Ищем GET запросы
-    for form in soup.find_all('form'):
-        method = form.get('method', 'GET').upper()
-        if method == 'GET':
-            requests_found.append(f"GET: {form.get('action')}")
-    
-    # Ищем POST запросы
-    for form in soup.find_all('form'):
-        method = form.get('method', 'GET').upper()
-        if method == 'POST':
-            requests_found.append(f"POST: {form.get('action')}")
-    
-    return requests_found
+    try:
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        requests_found = []
+        
+        # Ищем GET запросы
+        for form in soup.find_all('form'):
+            method = form.get('method', 'GET').upper()
+            if method == 'GET':
+                requests_found.append(f"GET: {form.get('action')}")
+        
+        # Ищем POST запросы
+        for form in soup.find_all('form'):
+            method = form.get('method', 'GET').upper()
+            if method == 'POST':
+                requests_found.append(f"POST: {form.get('action')}")
+        
+        return requests_found
+    except Exception as e:
+        return f"Ошибка при поиске POST и GET запросов: {e}"
 
 def scan_security_headers(url):
     """
@@ -135,12 +150,15 @@ def scan_security_headers(url):
     :param url: URL цели.
     :return: Список найденных заголовков безопасности.
     """
-    response = requests.get(url)
-    security_headers = []
-    for header in response.headers:
-        if header.lower() in ['x-frame-options', 'x-xss-protection', 'x-content-type-options', 'strict-transport-security', 'content-security-policy']:
-            security_headers.append(f"{header}: {response.headers[header]}")
-    return security_headers
+    try:
+        response = requests.get(url)
+        security_headers = []
+        for header in response.headers:
+            if header.lower() in ['x-frame-options', 'x-xss-protection', 'x-content-type-options', 'strict-transport-security', 'content-security-policy']:
+                security_headers.append(f"{header}: {response.headers[header]}")
+        return security_headers
+    except Exception as e:
+        return f"Ошибка при сканировании заголовков безопасности: {e}"
 
 def scan_directory_listing(url):
     """
@@ -148,12 +166,15 @@ def scan_directory_listing(url):
     :param url: URL цели.
     :return: Список найденных открытых директорий.
     """
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    directory_listing = []
-    if soup.find('pre'):
-        directory_listing.append(url)
-    return directory_listing
+    try:
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        directory_listing = []
+        if soup.find('pre'):
+            directory_listing.append(url)
+        return directory_listing
+    except Exception as e:
+        return f"Ошибка при сканировании открытых директорий: {e}"
 
 def scan_ssl_tls(target):
     """
@@ -161,9 +182,12 @@ def scan_ssl_tls(target):
     :param target: IP-адрес или домен цели.
     :return: Результат сканирования.
     """
-    sslscan_command = f"sslscan {target}"
-    result = subprocess.run(sslscan_command, shell=True, capture_output=True, text=True)
-    return result.stdout
+    try:
+        sslscan_command = f"sslscan {target}"
+        result = subprocess.run(sslscan_command, shell=True, capture_output=True, text=True)
+        return result.stdout
+    except Exception as e:
+        return f"Ошибка при сканировании уязвимостей в SSL/TLS: {e}"
 
 def scan_cms_vulnerabilities(target):
     """
@@ -171,9 +195,12 @@ def scan_cms_vulnerabilities(target):
     :param target: IP-адрес или домен цели.
     :return: Результат сканирования.
     """
-    wpscan_command = f"wpscan --url http://{target}"
-    result = subprocess.run(wpscan_command, shell=True, capture_output=True, text=True)
-    return result.stdout
+    try:
+        wpscan_command = f"wpscan --url http://{target}"
+        result = subprocess.run(wpscan_command, shell=True, capture_output=True, text=True)
+        return result.stdout
+    except Exception as e:
+        return f"Ошибка при сканировании уязвимостей в CMS: {e}"
 
 def scan_web_server_vulnerabilities(target):
     """
@@ -181,9 +208,12 @@ def scan_web_server_vulnerabilities(target):
     :param target: IP-адрес или домен цели.
     :return: Результат сканирования.
     """
-    nikto_command = f"nikto -h {target}"
-    result = subprocess.run(nikto_command, shell=True, capture_output=True, text=True)
-    return result.stdout
+    try:
+        nikto_command = f"nikto -h {target}"
+        result = subprocess.run(nikto_command, shell=True, capture_output=True, text=True)
+        return result.stdout
+    except Exception as e:
+        return f"Ошибка при сканировании уязвимостей в веб-сервере: {e}"
 
 def scan_robots_txt(target):
     """
@@ -191,12 +221,15 @@ def scan_robots_txt(target):
     :param target: IP-адрес или домен цели.
     :return: Содержимое файла robots.txt.
     """
-    robots_url = f"http://{target}/robots.txt"
-    response = requests.get(robots_url)
-    if response.status_code == 200:
-        return response.text
-    else:
-        return "Файл robots.txt не найден."
+    try:
+        robots_url = f"http://{target}/robots.txt"
+        response = requests.get(robots_url)
+        if response.status_code == 200:
+            return response.text
+        else:
+            return "Файл robots.txt не найден."
+    except Exception as e:
+        return f"Ошибка при сканировании файла robots.txt: {e}"
 
 def scan_sitemap_xml(target):
     """
@@ -204,12 +237,15 @@ def scan_sitemap_xml(target):
     :param target: IP-адрес или домен цели.
     :return: Содержимое файла sitemap.xml.
     """
-    sitemap_url = f"http://{target}/sitemap.xml"
-    response = requests.get(sitemap_url)
-    if response.status_code == 200:
-        return response.text
-    else:
-        return "Файл sitemap.xml не найден."
+    try:
+        sitemap_url = f"http://{target}/sitemap.xml"
+        response = requests.get(sitemap_url)
+        if response.status_code == 200:
+            return response.text
+        else:
+            return "Файл sitemap.xml не найден."
+    except Exception as e:
+        return f"Ошибка при сканировании файла sitemap.xml: {e}"
 
 def scan_admin_panel(target):
     """
@@ -217,13 +253,16 @@ def scan_admin_panel(target):
     :param target: IP-адрес или домен цели.
     :return: URL панели администратора, если найдена.
     """
-    admin_paths = ['/admin', '/login', '/wp-admin', '/administrator']
-    for path in admin_paths:
-        admin_url = f"http://{target}{path}"
-        response = requests.get(admin_url)
-        if response.status_code == 200:
-            return admin_url
-    return "Панель администратора не найдена."
+    try:
+        admin_paths = ['/admin', '/login', '/wp-admin', '/administrator']
+        for path in admin_paths:
+            admin_url = f"http://{target}{path}"
+            response = requests.get(admin_url)
+            if response.status_code == 200:
+                return admin_url
+        return "Панель администратора не найдена."
+    except Exception as e:
+        return f"Ошибка при сканировании панели администратора: {e}"
 
 def scan_error_pages(target):
     """
@@ -231,13 +270,16 @@ def scan_error_pages(target):
     :param target: IP-адрес или домен цели.
     :return: Список найденных страниц ошибок.
     """
-    error_pages = []
-    for code in [400, 401, 403, 404, 500]:
-        error_url = f"http://{target}/{code}.html"
-        response = requests.get(error_url)
-        if response.status_code == 200:
-            error_pages.append(error_url)
-    return error_pages
+    try:
+        error_pages = []
+        for code in [400, 401, 403, 404, 500]:
+            error_url = f"http://{target}/{code}.html"
+            response = requests.get(error_url)
+            if response.status_code == 200:
+                error_pages.append(error_url)
+        return error_pages
+    except Exception as e:
+        return f"Ошибка при сканировании страниц ошибок: {e}"
 
 def scan_http_methods(target):
     """
@@ -245,13 +287,16 @@ def scan_http_methods(target):
     :param target: IP-адрес или домен цели.
     :return: Список поддерживаемых HTTP методов.
     """
-    methods = ['GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS']
-    supported_methods = []
-    for method in methods:
-        response = requests.request(method, f"http://{target}")
-        if response.status_code != 405:
-            supported_methods.append(method)
-    return supported_methods
+    try:
+        methods = ['GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS']
+        supported_methods = []
+        for method in methods:
+            response = requests.request(method, f"http://{target}")
+            if response.status_code != 405:
+                supported_methods.append(method)
+        return supported_methods
+    except Exception as e:
+        return f"Ошибка при сканировании поддерживаемых HTTP методов: {e}"
 
 def show_progress(message, duration=2):
     """
