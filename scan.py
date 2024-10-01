@@ -112,6 +112,19 @@ def find_links_and_keywords(url):
             if word in text:
                 keywords.append(word)
         
+        # Проверяем, что возвращаем ровно два значения
+        if len(links) > 1000 or len(keywords) > 1000:
+            random_suffix = ''.join(random.choices(string.digits, k=6))
+            filename = f"find_links_and_keywords_{random_suffix}.txt"
+            with open(filename, "w") as f:
+                f.write("Links:\n")
+                for link in links:
+                    f.write(f"{link}\n")
+                f.write("\nKeywords:\n")
+                for keyword in keywords:
+                    f.write(f"{keyword}\n")
+            return f"Слишком много данных. Сохранено в файл: {filename}"
+        
         return links, keywords
     except Exception as e:
         return f"Ошибка при поиске ссылок и ключевых слов: {e}"
