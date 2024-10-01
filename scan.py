@@ -59,7 +59,7 @@ def scan_ports(target):
     :return: Список открытых портов.
     """
     try:
-        nmap_command = f"nmap -p- {target}"
+        nmap_command = f"nmap {target}"
         result = subprocess.run(nmap_command, shell=True, capture_output=True, text=True)
         open_ports = []
         for line in result.stdout.splitlines():
