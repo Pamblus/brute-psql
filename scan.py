@@ -115,7 +115,7 @@ def find_links_and_keywords(url):
         return links, keywords
     except Exception as e:
         return f"Ошибка при поиске ссылок и ключевых слов: {e}"
-
+        
 def find_requests(url):
     """
     Ищет POST и GET запросы на целевом сайте.
