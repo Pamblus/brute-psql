@@ -24,14 +24,22 @@ def analyze_page(url):
         inputs = form.find_all('input')
         data = {input.get('name'): input.get('value') for input in inputs}
 
-        print(f"[имя файла в котором найдено] {url}")
-        print(f"[название метода] {method}")
-        print(f"[куда ссылается] {action}")
-        print(f"[что передаёт] {data}")
-        print(f"[что получает] (недоступно без отправки запроса)")
-        print(f"[путь ссылки] {action}")
-        print(f"[имя ссылаемого файла] (недоступно без отправки запроса)")
-        print(f"[другие данные] (недоступно без отправки запроса)")
+        print(f"Файл: {url}")
+        print(f"Метод: {method}")
+        print(f"Ссылка: {action}")
+        print(f"Передает: {data}")
+
+        if method == 'POST':
+            response = requests.post(action, data=data)
+        elif method == 'GET':
+            response = requests.get(action, params=data)
+        else:
+            response = requests.request(method, action, data=data)
+
+        print(f"Получает: {response.text[:100]}...")  # Ограничиваем вывод для краткости
+        print(f"Путь: {action}")
+        print(f"Файл: {action.split('/')[-1]}")
+        print(f"Данные: {response.headers}")
         print()
 
     # Ищем все ссылки на странице
@@ -39,14 +47,14 @@ def analyze_page(url):
     for link in links:
         href = link['href']
         full_href = get_full_url(url, href)
-        print(f"[имя файла в котором найдено] {url}")
-        print(f"[название метода] GET")
-        print(f"[куда ссылается] {full_href}")
-        print(f"[что передаёт] (недоступно без отправки запроса)")
-        print(f"[что получает] (недоступно без отправки запроса)")
-        print(f"[путь ссылки] {full_href}")
-        print(f"[имя ссылаемого файла] (недоступно без отправки запроса)")
-        print(f"[другие данные] (недоступно без отправки запроса)")
+        print(f"Файл: {url}")
+        print(f"Метод: GET")
+        print(f"Ссылка: {full_href}")
+        print(f"Передает: (недоступно без отправки запроса)")
+        print(f"Получает: (недоступно без отправки запроса)")
+        print(f"Путь: {full_href}")
+        print(f"Файл: {full_href.split('/')[-1]}")
+        print(f"Данные: (недоступно без отправки запроса)")
         print()
 
 def main():
