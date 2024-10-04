@@ -8,13 +8,17 @@ def get_full_url(base_url, path):
     return urljoin(base_url, path)
 
 def send_request(method, url, data=None):
-    if method == 'GET':
-        response = requests.get(url, params=data)
-    elif method == 'POST':
-        response = requests.post(url, data=data)
-    else:
-        response = requests.request(method, url, data=data)
-    return response
+    try:
+        if method == 'GET':
+            response = requests.get(url, params=data)
+        elif method == 'POST':
+            response = requests.post(url, data=data)
+        else:
+            response = requests.request(method, url, data=data)
+        return response
+    except requests.exceptions.RequestException as e:
+        print(f"Ошибка при отправке запроса {method} {url}: {e}")
+        return None
 
 def analyze_page(url, visited_urls, base_domain, report_file):
     if url in visited_urls:
@@ -40,7 +44,7 @@ def analyze_page(url, visited_urls, base_domain, report_file):
             if data:
                 print(f"Передает: {data}")
                 response = send_request(method, action, data)
-                if 'text/html' not in response.headers.get('Content-Type', ''):
+                if response and 'text/html' not in response.headers.get('Content-Type', ''):
                     print(f"Получает: {response.text[:100]}...")  # Ограничиваем вывод для краткости
                     print(f"Путь: {action}")
                     print(f"Файл: {action.split('/')[-1]}")
