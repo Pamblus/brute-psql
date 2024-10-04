@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import re
 from urllib.parse import urljoin
+from html import escape
 
 def get_full_url(base_url, path):
     return urljoin(base_url, path)
@@ -15,7 +16,7 @@ def send_request(method, url, data=None):
         response = requests.request(method, url, data=data)
     return response
 
-def analyze_page(url, visited_urls):
+def analyze_page(url, visited_urls, base_domain, report_file):
     if url in visited_urls:
         return
     visited_urls.add(url)
@@ -39,10 +40,20 @@ def analyze_page(url, visited_urls):
             if data:
                 print(f"Передает: {data}")
                 response = send_request(method, action, data)
-                print(f"Получает: {response.text[:100]}...")  # Ограничиваем вывод для краткости
-                print(f"Путь: {action}")
-                print(f"Файл: {action.split('/')[-1]}")
-                print(f"Данные: {response.headers}")
+                if 'text/html' not in response.headers.get('Content-Type', ''):
+                    print(f"Получает: {response.text[:100]}...")  # Ограничиваем вывод для краткости
+                    print(f"Путь: {action}")
+                    print(f"Файл: {action.split('/')[-1]}")
+                    print(f"Данные: {response.headers}")
+                    report_file.write(f"<h3>Метод: {method}</h3>")
+                    report_file.write(f"<p>Ссылка: {action}</p>")
+                    report_file.write(f"<p>Передает: {escape(str(data))}</p>")
+                    report_file.write(f"<p>Получает: {escape(response.text[:100])}...</p>")
+                    report_file.write(f"<p>Путь: {action}</p>")
+                    report_file.write(f"<p>Файл: {action.split('/')[-1]}</p>")
+                    report_file.write(f"<p>Данные: {escape(str(response.headers))}</p>")
+                else:
+                    print(f"Метод: {method}, Ссылка: {action}")
             else:
                 print(f"Метод: {method}, Ссылка: {action}")
             print()
@@ -53,7 +64,11 @@ def analyze_page(url, visited_urls):
             href = link['href']
             full_href = get_full_url(url, href)
             if full_href not in visited_urls:
-                analyze_page(full_href, visited_urls)
+                if base_domain not in full_href:
+                    continue_scan = input(f"Найден другой домен: {full_href}. Продолжить сканирование? (y/n): ")
+                    if continue_scan.lower() != 'y':
+                        continue
+                analyze_page(full_href, visited_urls, base_domain, report_file)
 
     except Exception as e:
         print(f"Ошибка при анализе {url}: {e}")
@@ -66,9 +81,18 @@ def main():
     if not re.match(r'^https?://', url):
         url = 'http://' + url
 
-    # Анализируем страницу
-    visited_urls = set()
-    analyze_page(url, visited_urls)
+    # Получаем базовый домен
+    base_domain = re.search(r'^https?://([^/]+)', url).group(1)
+
+    # Открываем файл для записи отчета
+    with open("report.html", "w") as report_file:
+        report_file.write("<html><body>")
+
+        # Анализируем страницу
+        visited_urls = set()
+        analyze_page(url, visited_urls, base_domain, report_file)
+
+        report_file.write("</body></html>")
 
 if __name__ == "__main__":
     main()
