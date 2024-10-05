@@ -1,4 +1,5 @@
 import mysql.connector
+from mysql.connector import errorcode
 
 def connect_mysql(host, user, password, port):
     try:
@@ -55,10 +56,35 @@ def execute_query(cursor, database, query):
     except mysql.connector.Error as err:
         print(f"Ошибка выполнения запроса: {err}")
 
+def brute_force(host, port):
+    user = input("Введите имя пользователя или имя файла с именами пользователей: ")
+    password = input("Введите пароль или имя файла с паролями: ")
+
+    users = []
+    passwords = []
+
+    if user.endswith('.txt'):
+        with open(user, 'r') as file:
+            users = [line.strip() for line in file]
+    else:
+        users = [user]
+
+    if password.endswith('.txt'):
+        with open(password, 'r') as file:
+            passwords = [line.strip() for line in file]
+    else:
+        passwords = [password]
+
+    for user in users:
+        for password in passwords:
+            print(f"Попытка подключения с пользователем '{user}' и паролем '{password}'")
+            conn = connect_mysql(host, user, password, port)
+            if conn:
+                return conn
+    return None
+
 def main():
     host = input("Введите IP-адрес или домен: ")
-    user = input("Введите имя пользователя: ")
-    password = input("Введите пароль (оставьте пустым, если без пароля): ")
     port = input("Введите порт (оставьте пустым для стандартного): ")
 
     if port == "":
@@ -66,53 +92,70 @@ def main():
     else:
         port = int(port)
 
-    conn = connect_mysql(host, user, password, port)
-    if conn:
-        cursor = conn.cursor()
-        
-        while True:
-            print("\nВыберите действие:")
-            print("1. Показать все базы данных")
-            print("2. Выбрать базу данных")
-            print("3. Выход")
-            choice = input("Введите номер выбора: ")
+    while True:
+        print("\nВыберите действие:")
+        print("1. Подключиться вручную")
+        print("2. Брутфорс паролей")
+        print("3. Выход")
+        choice = input("Введите номер выбора: ")
 
-            if choice == "1":
-                show_databases(cursor)
-            elif choice == "2":
-                database = input("Введите имя базы данных: ")
-                cursor.execute(f"USE {database}")
-                while True:
-                    print("\nВыберите действие:")
-                    print("1. Показать все таблицы")
-                    print("2. Показать структуру таблицы")
-                    print("3. Показать данные таблицы")
-                    print("4. Выполнить произвольный SQL-запрос")
-                    print("5. Вернуться к выбору базы данных")
-                    sub_choice = input("Введите номер выбора: ")
+        if choice == "1":
+            user = input("Введите имя пользователя: ")
+            password = input("Введите пароль (оставьте пустым, если без пароля): ")
+            conn = connect_mysql(host, user, password, port)
+        elif choice == "2":
+            conn = brute_force(host, port)
+        elif choice == "3":
+            break
+        else:
+            print("Неверный выбор.")
+            continue
 
-                    if sub_choice == "1":
-                        show_tables(cursor, database)
-                    elif sub_choice == "2":
-                        table = input("Введите имя таблицы: ")
-                        show_table_structure(cursor, database, table)
-                    elif sub_choice == "3":
-                        table = input("Введите имя таблицы: ")
-                        show_table_data(cursor, database, table)
-                    elif sub_choice == "4":
-                        query = input("Введите SQL-запрос: ")
-                        execute_query(cursor, database, query)
-                    elif sub_choice == "5":
-                        break
-                    else:
-                        print("Неверный выбор.")
-            elif choice == "3":
-                break
-            else:
-                print("Неверный выбор.")
+        if conn:
+            cursor = conn.cursor()
+            while True:
+                print("\nВыберите действие:")
+                print("1. Показать все базы данных")
+                print("2. Выбрать базу данных")
+                print("3. Вернуться к выбору подключения")
+                sub_choice = input("Введите номер выбора: ")
 
-        cursor.close()
-        conn.close()
+                if sub_choice == "1":
+                    show_databases(cursor)
+                elif sub_choice == "2":
+                    database = input("Введите имя базы данных: ")
+                    cursor.execute(f"USE {database}")
+                    while True:
+                        print("\nВыберите действие:")
+                        print("1. Показать все таблицы")
+                        print("2. Показать структуру таблицы")
+                        print("3. Показать данные таблицы")
+                        print("4. Выполнить произвольный SQL-запрос")
+                        print("5. Вернуться к выбору базы данных")
+                        sub_sub_choice = input("Введите номер выбора: ")
+
+                        if sub_sub_choice == "1":
+                            show_tables(cursor, database)
+                        elif sub_sub_choice == "2":
+                            table = input("Введите имя таблицы: ")
+                            show_table_structure(cursor, database, table)
+                        elif sub_sub_choice == "3":
+                            table = input("Введите имя таблицы: ")
+                            show_table_data(cursor, database, table)
+                        elif sub_sub_choice == "4":
+                            query = input("Введите SQL-запрос: ")
+                            execute_query(cursor, database, query)
+                        elif sub_sub_choice == "5":
+                            break
+                        else:
+                            print("Неверный выбор.")
+                elif sub_choice == "3":
+                    break
+                else:
+                    print("Неверный выбор.")
+
+            cursor.close()
+            conn.close()
 
 if __name__ == "__main__":
     main()
